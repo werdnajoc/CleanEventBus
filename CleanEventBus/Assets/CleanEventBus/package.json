@@ -1,10 +1,9 @@
 ﻿{
   "name": "com.werdnajoc.clean-event-bus",
   "version": "1.0.0",
-  "displayName": "Clean EventBus",
+  "displayName": "CleanEventBus",
   "description": "A layered, type-safe event bus system for Unity implementing Clean Architecture principles with context-aware targeting.",
   "unity": "2021.3",
-  "hideInEditor": false,
   "author": {
     "name": "Andrew Ortiz",
     "email": "hi@andrewortiz.com",
@@ -21,7 +20,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/werdnajoc/layered-event-bus-for-unity.git"
+    "url": "https://github.com/werdnajoc/CleanEventBus.git"
   },
   "samples": [
     {
