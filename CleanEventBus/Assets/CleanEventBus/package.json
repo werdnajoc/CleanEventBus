@@ -22,7 +22,6 @@
     "type": "git",
     "url": "https://github.com/werdnajoc/CleanEventBus.git"
   },
-  "documentationUrl": "https://vcontainer.hadashikick.jp/",
   "changelogUrl": "https://github.com/werdnajoc/CleanEventBus/releases",
   "licensesUrl": "https://github.com/werdnajoc/CleanEventBus/blob/master/LICENSE",
   "samples": [
