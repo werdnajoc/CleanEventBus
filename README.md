@@ -90,7 +90,7 @@ appEventBus.Publish(new StoreDomainEvent()); // Compile error!
 
 1. Open **Package Manager** in Unity
 2. Click **"+"** and select **"Add package from git URL"**
-3. Enter: `https://github.com/werdnajoc/CleanEventBus.git`
+3. Enter: `https://github.com/werdnajoc/CleanEventBus.git?path=CleanEventBus/Assets/CleanEventBus`
 4. Click **"Add"**
 
 ### Via manifest.json
@@ -98,13 +98,13 @@ appEventBus.Publish(new StoreDomainEvent()); // Compile error!
 Copy And Past this line to your `Packages/manifest.json`:
 
 ```text
-"com.werdnajoc.clean-event-bus": "https://github.com/werdnajoc/CleanEventBus.git?path=Packages/com.werdnajoc.clean-event-bus",
+"com.werdnajoc.clean-event-bus": "https://github.com/werdnajoc/CleanEventBus.git?path=CleanEventBus/Assets/CleanEventBus",
 ```
 Example
 ```json
 {
   "dependencies": {
-    "com.werdnajoc.clean-event-bus": "https://github.com/werdnajoc/CleanEventBus.git?path=Packages/com.werdnajoc.clean-event-bus",
+    "com.werdnajoc.clean-event-bus": "https://github.com/werdnajoc/CleanEventBus.git?path=CleanEventBus/Assets/CleanEventBus",
     // ... other dependencies
   }
 }
