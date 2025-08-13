@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
@@ -7,7 +6,7 @@ using CleanEventBus.Interfaces;
 
 namespace CleanEventBus.Core
 {
- public abstract class InMemoryBaseEventBus<TEventInterface>
+    public abstract class InMemoryBaseEventBus<TEventInterface>
         where TEventInterface : class
     { 
         private static readonly ConcurrentDictionary<Type, string> TargetPropertyCache = new();
@@ -17,15 +16,9 @@ namespace CleanEventBus.Core
         private readonly object _lockObject = new();
 
         // =============================================================================
-        // PUBLIC API - WITH SUBSCRIPTION TOKENS
+        // PUBLIC API
         // =============================================================================
         
-        /// <summary>
-        /// Subscribe to an event and get a token for safe unsubscription
-        /// </summary>
-        /// <typeparam name="T">Event type</typeparam>
-        /// <param name="callback">Callback to invoke when event is published</param>
-        /// <returns>Subscription token that can be disposed to unsubscribe</returns>
         protected ISubscriptionToken Subscribe<T>(Action<T> callback) where T : class, TEventInterface
         {
             if (callback == null) throw new ArgumentNullException(nameof(callback));
@@ -38,11 +31,17 @@ namespace CleanEventBus.Core
             {
                 if (targetProperty != null && !string.IsNullOrEmpty(currentContext))
                 {
-                    SubscribeToTargetedEvent(callback, currentContext);
+                    SubscribeToTargetedEventInternal(callback, currentContext);
+                }
+                else if (targetProperty != null && string.IsNullOrEmpty(currentContext))
+                {
+                    // ✅ ESTO ES LO NUEVO: Targeted event WITHOUT context - treat as global
+                    // but won't receive targeted events (as expected by test)
+                    SubscribeToGlobalEventInternal(callback);
                 }
                 else
                 {
-                    SubscribeToGlobalEvent(callback);
+                    SubscribeToGlobalEventInternal(callback);
                 }
             }
             
@@ -51,29 +50,21 @@ namespace CleanEventBus.Core
                 var oldContext = EventContext.CurrentStoreId;
                 try 
                 {
-                    // Restore the original context for unsubscribe
                     EventContext.SetContext(currentContext);
                     UnsubscribeInternal(callback);
                 }
                 finally 
                 {
-                    // Restore previous context
                     EventContext.SetContext(oldContext);
                 }
             });
         }
-
-        /// <summary>
-        /// Unsubscribe from an event (legacy method for backward compatibility)
-        /// </summary>
+        
         protected void Unsubscribe<T>(Action<T> callback) where T : class, TEventInterface
         {
             UnsubscribeInternal(callback);
         }
         
-        /// <summary>
-        /// Internal unsubscribe method used by both public Unsubscribe and token disposal
-        /// </summary>
         private void UnsubscribeInternal<T>(Action<T> callback) where T : class, TEventInterface
         {
             if (callback == null) throw new ArgumentNullException(nameof(callback));
@@ -85,18 +76,15 @@ namespace CleanEventBus.Core
             {
                 if (targetProperty != null && !string.IsNullOrEmpty(EventContext.CurrentStoreId))
                 {
-                    UnsubscribeFromTargetedEvent(callback, EventContext.CurrentStoreId);
+                    UnsubscribeFromTargetedEventInternal(callback, EventContext.CurrentStoreId);
                 }
                 else
                 {
-                    UnsubscribeFromGlobalEvent(callback);
+                    UnsubscribeFromGlobalEventInternal(callback);
                 }
             }
         }
 
-        /// <summary>
-        /// Publish an event to all subscribers
-        /// </summary>
         protected void Publish<T>(T @event) where T : class, TEventInterface
         {
             if (@event == null) return;
@@ -104,24 +92,69 @@ namespace CleanEventBus.Core
             var eventType = typeof(T);
             var targetProperty = GetTargetProperty(eventType);
 
+            // Get snapshot of delegates WITHOUT holding lock during invocation
+            MulticastDelegate targetedDelegate = null;
+            Delegate globalDelegate = null;
+            string targetId = null;
+
             if (targetProperty != null)
             {
-                var targetId = GetTargetIdFromEvent(@event, targetProperty);
+                targetId = GetTargetIdFromEvent(@event, targetProperty);
                 if (!string.IsNullOrEmpty(targetId))
                 {
-                    PublishTargetedEvent(@event, targetId);
-                    return;
+                    lock (_lockObject)
+                    {
+                        if (_targetedSubscriptions.ContainsKey(eventType) &&
+                            _targetedSubscriptions[eventType].ContainsKey(targetId))
+                        {
+                            targetedDelegate = _targetedSubscriptions[eventType][targetId];
+                        }
+                    }
                 }
             }
 
-            PublishGlobalEvent(@event);
+            // If no targeted delegate found, get global delegate
+            if (targetedDelegate == null)
+            {
+                lock (_lockObject)
+                {
+                    if (_globalSubscriptions.ContainsKey(eventType))
+                    {
+                        globalDelegate = _globalSubscriptions[eventType];
+                    }
+                }
+            }
+
+            // Invoke delegates OUTSIDE of lock to prevent deadlocks
+            if (targetedDelegate != null && targetedDelegate is Action<T> targetedAction)
+            {
+                try
+                {
+                    targetedAction.Invoke(@event);
+                }
+                catch (Exception ex)
+                {
+                    UnityEngine.Debug.LogError($"Error in targeted event handler: {ex.Message}");
+                }
+            }
+            else if (globalDelegate != null && globalDelegate is Action<T> globalAction)
+            {
+                try
+                {
+                    globalAction.Invoke(@event);
+                }
+                catch (Exception ex)
+                {
+                    UnityEngine.Debug.LogError($"Error in global event handler: {ex.Message}");
+                }
+            }
         }
 
         // =============================================================================
-        // PRIVATE IMPLEMENTATION METHODS
+        // INTERNAL METHODS (all called within locks)
         // =============================================================================
         
-        private void SubscribeToTargetedEvent<T>(Action<T> callback, string targetId) where T : class, TEventInterface
+        private void SubscribeToTargetedEventInternal<T>(Action<T> callback, string targetId) where T : class, TEventInterface
         {
             var eventType = typeof(T);
 
@@ -135,7 +168,7 @@ namespace CleanEventBus.Core
                 (MulticastDelegate)Delegate.Combine(_targetedSubscriptions[eventType][targetId], callback);
         }
 
-        private void UnsubscribeFromTargetedEvent<T>(Action<T> callback, string targetId)
+        private void UnsubscribeFromTargetedEventInternal<T>(Action<T> callback, string targetId)
             where T : class, TEventInterface
         {
             var eventType = typeof(T);
@@ -158,35 +191,7 @@ namespace CleanEventBus.Core
             }
         }
 
-        private void PublishTargetedEvent<T>(T @event, string targetId) where T : class, TEventInterface
-        {
-            var eventType = typeof(T);
-
-            lock (_lockObject)
-            {
-                if (_targetedSubscriptions.ContainsKey(eventType) &&
-                    _targetedSubscriptions[eventType].ContainsKey(targetId) &&
-                    _targetedSubscriptions[eventType][targetId] is Action<T> action)
-                {
-                    action.Invoke(@event);
-                }
-            }
-        }
-
-        private void PublishGlobalEvent<T>(T @event) where T : class, TEventInterface
-        {
-            var type = typeof(T);
-            lock (_lockObject)
-            {
-                if (_globalSubscriptions.ContainsKey(type) && 
-                    _globalSubscriptions[type] is Action<T> action)
-                {
-                    action.Invoke(@event);
-                }
-            }
-        }
-
-        private void SubscribeToGlobalEvent<T>(Action<T> callback) where T : class, TEventInterface
+        private void SubscribeToGlobalEventInternal<T>(Action<T> callback) where T : class, TEventInterface
         {
             var type = typeof(T);
             _globalSubscriptions.TryAdd(type, null);
@@ -194,7 +199,7 @@ namespace CleanEventBus.Core
             _globalSubscriptions[type] = Delegate.Combine(_globalSubscriptions[type], callback);
         }
 
-        private void UnsubscribeFromGlobalEvent<T>(Action<T> callback) where T : class, TEventInterface
+        private void UnsubscribeFromGlobalEventInternal<T>(Action<T> callback) where T : class, TEventInterface
         {
             var type = typeof(T);
             if (_globalSubscriptions.ContainsKey(type))
@@ -203,6 +208,10 @@ namespace CleanEventBus.Core
             }
         }
 
+        // =============================================================================
+        // HELPER METHODS (lock-free)
+        // =============================================================================
+        
         private static string GetTargetProperty(Type eventType)
         {
             return TargetPropertyCache.GetOrAdd(eventType, type =>
@@ -215,8 +224,16 @@ namespace CleanEventBus.Core
         private static string GetTargetIdFromEvent<T>(T @event, string targetPropertyName)
             where T : class, TEventInterface
         {
-            var property = typeof(T).GetProperty(targetPropertyName);
-            return property?.GetValue(@event)?.ToString();
+            try
+            {
+                var property = typeof(T).GetProperty(targetPropertyName);
+                return property?.GetValue(@event)?.ToString();
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"Error getting target ID from event: {ex.Message}");
+                return null;
+            }
         }
     }
 }

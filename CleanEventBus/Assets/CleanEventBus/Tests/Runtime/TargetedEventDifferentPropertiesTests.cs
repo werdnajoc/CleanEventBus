@@ -53,6 +53,8 @@ namespace CleanEventBus.Tests.Runtime
         [TargetedEvent("SessionId")]
         private class SessionEvent : ApplicationEvent
         {
+            public string SessionId { get; set; }  // ← AGREGAR ESTO
+
             public string Action { get; set; }
         }
 
@@ -279,15 +281,9 @@ namespace CleanEventBus.Tests.Runtime
             }
 
             // Act - multiple events for different sessions
-            _eventBus.Publish(new SessionEvent { Action = "LOGIN" });
-            _eventBus.Publish(new SessionEvent
-                {
-                    Action = "PURCHASE"
-                });
-            _eventBus.Publish(new SessionEvent
-                {
-                    Action = "LOGIN"
-                });
+            _eventBus.Publish(new SessionEvent { SessionId = session1, Action = "LOGIN" });
+            _eventBus.Publish(new SessionEvent { SessionId = session2, Action = "LOGIN" });
+            _eventBus.Publish(new SessionEvent { SessionId = session1, Action = "PURCHASE" });
 
             // Assert
             Assert.AreEqual(2, session1Events.Count, "Session 1 should receive 2 events");
