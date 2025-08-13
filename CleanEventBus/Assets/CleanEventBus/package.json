@@ -1,6 +1,6 @@
 ﻿{
   "name": "com.werdnajoc.clean-event-bus",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "displayName": "CleanEventBus",
   "description": "A layered, type-safe event bus system for Unity implementing Clean Architecture principles with context-aware targeting.",
   "unity": "2021.3",
@@ -22,6 +22,8 @@
     "type": "git",
     "url": "https://github.com/werdnajoc/CleanEventBus.git"
   },
+  "changelogUrl": "https://github.com/werdnajoc/CleanEventBus/releases",
+  "licensesUrl": "https://github.com/werdnajoc/CleanEventBus/blob/master/LICENSE",
   "samples": [
     {
       "displayName": "Basic Usage Examples",
@@ -34,6 +36,5 @@
       "path": "Samples~/CleanArchitectureDemo"
     }
   ],
-  "dependencies": {},
   "testables": ["com.werdnajoc.clean-event-bus"]
 }
