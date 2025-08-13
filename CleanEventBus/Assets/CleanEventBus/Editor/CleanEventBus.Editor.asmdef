@@ -1,0 +1,18 @@
+﻿{
+  "name": "CleanEventBus.Editor",
+  "rootNamespace": "CleanEventBus.Editor",
+  "references": [
+    "CleanEventBus.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -1,0 +1,40 @@
+﻿{
+  "name": "com.werdnajoc.clean-event-bus",
+  "version": "0.0.1",
+  "displayName": "CleanEventBus",
+  "description": "A layered, type-safe event bus system for Unity implementing Clean Architecture principles with context-aware targeting.",
+  "unity": "2021.3",
+  "author": {
+    "name": "Andrew Ortiz",
+    "email": "hi@andrewortiz.com",
+    "url": "https://github.com/werdnajoc"
+  },
+  "keywords": [
+    "eventbus",
+    "clean-architecture",
+    "mvvm",
+    "events",
+    "decoupling",
+    "architecture"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/werdnajoc/CleanEventBus.git"
+  },
+  "changelogUrl": "https://github.com/werdnajoc/CleanEventBus/releases",
+  "licensesUrl": "https://github.com/werdnajoc/CleanEventBus/blob/master/LICENSE",
+  "samples": [
+    {
+      "displayName": "Basic Usage Examples",
+      "description": "Simple examples showing how to use Clean EventBus",
+      "path": "Samples~/BasicUsage"
+    },
+    {
+      "displayName": "Clean Architecture Demo",
+      "description": "Complete demo implementing Clean Architecture with EventBus",
+      "path": "Samples~/CleanArchitectureDemo"
+    }
+  ],
+  "testables": ["com.werdnajoc.clean-event-bus"]
+}
