@@ -6,9 +6,9 @@ namespace CleanEventBus.Application
 {
     public class ApplicationEventBus: InMemoryBaseEventBus<IApplicationEvent>, IApplicationEventBus
     {
-        public new void Subscribe<T>(Action<T> callback) where T : class, IApplicationEvent
+        public new ISubscriptionToken Subscribe<T>(Action<T> callback) where T : class, IApplicationEvent
         {
-            base.Subscribe(callback);
+            return base.Subscribe(callback);
         }
         
         public new void Unsubscribe<T>(Action<T> callback) where T : class, IApplicationEvent

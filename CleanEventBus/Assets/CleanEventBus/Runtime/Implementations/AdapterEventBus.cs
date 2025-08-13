@@ -6,9 +6,9 @@ namespace CleanEventBus.Adapter
 {
     public class AdapterEventBus: InMemoryBaseEventBus<IAdapterEvent>, IAdapterEventBus
     {
-        public new void Subscribe<T>(Action<T> callback) where T : class, IAdapterEvent
+        public  ISubscriptionToken Subscribe<T>(Action<T> callback) where T : class, IAdapterEvent
         {
-            base.Subscribe(callback);
+            return base.Subscribe(callback);
         }
         
         public new void Unsubscribe<T>(Action<T> callback) where T : class, IAdapterEvent

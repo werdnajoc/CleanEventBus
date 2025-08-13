@@ -22,16 +22,16 @@ namespace CleanEventBus.Core
         
         private class ContextScope : IDisposable
         {
-            private readonly string previousContext;
+            private readonly string _previousContext;
             
             public ContextScope(string previousContext)
             {
-                this.previousContext = previousContext;
+                this._previousContext = previousContext;
             }
             
             public void Dispose()
             {
-                CurrentStoreId = previousContext;
+                CurrentStoreId = _previousContext;
             }
         }
     }

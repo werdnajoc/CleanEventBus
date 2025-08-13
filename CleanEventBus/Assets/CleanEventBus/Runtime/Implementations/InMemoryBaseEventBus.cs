@@ -3,10 +3,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
+using CleanEventBus.Interfaces;
 
 namespace CleanEventBus.Core
 {
-    public abstract class InMemoryBaseEventBus<TEventInterface>
+ public abstract class InMemoryBaseEventBus<TEventInterface>
         where TEventInterface : class
     { 
         private static readonly ConcurrentDictionary<Type, string> TargetPropertyCache = new();
@@ -15,26 +16,68 @@ namespace CleanEventBus.Core
         private readonly Dictionary<Type, Delegate> _globalSubscriptions = new();
         private readonly object _lockObject = new();
 
-        protected void Subscribe<T>(Action<T> callback) where T : class, TEventInterface
+        // =============================================================================
+        // PUBLIC API - WITH SUBSCRIPTION TOKENS
+        // =============================================================================
+        
+        /// <summary>
+        /// Subscribe to an event and get a token for safe unsubscription
+        /// </summary>
+        /// <typeparam name="T">Event type</typeparam>
+        /// <param name="callback">Callback to invoke when event is published</param>
+        /// <returns>Subscription token that can be disposed to unsubscribe</returns>
+        protected ISubscriptionToken Subscribe<T>(Action<T> callback) where T : class, TEventInterface
         {
+            if (callback == null) throw new ArgumentNullException(nameof(callback));
+            
             var eventType = typeof(T);
             var targetProperty = GetTargetProperty(eventType);
+            var currentContext = EventContext.CurrentStoreId; // Capture current context
 
             lock (_lockObject)
             {
-                if (targetProperty != null && !string.IsNullOrEmpty(EventContext.CurrentStoreId))
+                if (targetProperty != null && !string.IsNullOrEmpty(currentContext))
                 {
-                    SubscribeToTargetedEvent(callback, EventContext.CurrentStoreId);
+                    SubscribeToTargetedEvent(callback, currentContext);
                 }
                 else
                 {
                     SubscribeToGlobalEvent(callback);
                 }
             }
+            
+            // Return token that remembers the context and callback
+            return new SubscriptionToken(() => {
+                var oldContext = EventContext.CurrentStoreId;
+                try 
+                {
+                    // Restore the original context for unsubscribe
+                    EventContext.SetContext(currentContext);
+                    UnsubscribeInternal(callback);
+                }
+                finally 
+                {
+                    // Restore previous context
+                    EventContext.SetContext(oldContext);
+                }
+            });
         }
 
+        /// <summary>
+        /// Unsubscribe from an event (legacy method for backward compatibility)
+        /// </summary>
         protected void Unsubscribe<T>(Action<T> callback) where T : class, TEventInterface
         {
+            UnsubscribeInternal(callback);
+        }
+        
+        /// <summary>
+        /// Internal unsubscribe method used by both public Unsubscribe and token disposal
+        /// </summary>
+        private void UnsubscribeInternal<T>(Action<T> callback) where T : class, TEventInterface
+        {
+            if (callback == null) throw new ArgumentNullException(nameof(callback));
+            
             var eventType = typeof(T);
             var targetProperty = GetTargetProperty(eventType);
 
@@ -51,6 +94,9 @@ namespace CleanEventBus.Core
             }
         }
 
+        /// <summary>
+        /// Publish an event to all subscribers
+        /// </summary>
         protected void Publish<T>(T @event) where T : class, TEventInterface
         {
             if (@event == null) return;
@@ -71,7 +117,10 @@ namespace CleanEventBus.Core
             PublishGlobalEvent(@event);
         }
 
-        // MÉTODOS PRIVADOS
+        // =============================================================================
+        // PRIVATE IMPLEMENTATION METHODS
+        // =============================================================================
+        
         private void SubscribeToTargetedEvent<T>(Action<T> callback, string targetId) where T : class, TEventInterface
         {
             var eventType = typeof(T);
@@ -127,10 +176,13 @@ namespace CleanEventBus.Core
         private void PublishGlobalEvent<T>(T @event) where T : class, TEventInterface
         {
             var type = typeof(T);
-            if (_globalSubscriptions.ContainsKey(type) && 
-                _globalSubscriptions[type] is Action<T> action)
+            lock (_lockObject)
             {
-                action.Invoke(@event);
+                if (_globalSubscriptions.ContainsKey(type) && 
+                    _globalSubscriptions[type] is Action<T> action)
+                {
+                    action.Invoke(@event);
+                }
             }
         }
 

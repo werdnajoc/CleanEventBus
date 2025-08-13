@@ -4,19 +4,19 @@ using CleanEventBus.Interfaces;
 
 namespace CleanEventBus.Domain
 {
-    public class DomainEventBus: InMemoryBaseEventBus<IAdapterEvent>, IAdapterEventBus
+    public class DomainEventBus: InMemoryBaseEventBus<IDomainEvent>, IDomainEventBus
     {
-        public new void Subscribe<T>(Action<T> callback) where T : class, IAdapterEvent
+        public new ISubscriptionToken Subscribe<T>(Action<T> callback) where T : class, IDomainEvent
         {
-            base.Subscribe(callback);
+            return base.Subscribe(callback);
         }
         
-        public new void Unsubscribe<T>(Action<T> callback) where T : class, IAdapterEvent
+        public new void Unsubscribe<T>(Action<T> callback) where T : class, IDomainEvent
         {
             base.Unsubscribe(callback);
         }
         
-        public new void Publish<T>(T @event) where T : class, IAdapterEvent
+        public new void Publish<T>(T @event) where T : class, IDomainEvent
         {
             base.Publish(@event);
         }
